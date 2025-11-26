@@ -15,23 +15,41 @@ export async function generateStudentReportCard(user = {}, subjects = []) {
   const header = `Name: ${user?.name || '-'}    USN: ${user?.usn || '-'}    Year: ${user?.year || '-'}    Dept: ${user?.department || '-'}`;
   doc.text(header, 14, 22);
 
-  // Determine available columns based on data
-  const hasIAT = subjects.some(s => valid(s.iat));
-  const hasLab = subjects.some(s => valid(s.lab));
-  const hasAssign = subjects.some(s => valid(s.assignment));
+  // Determine available columns based on data (per-assessment)
+  const hasIAT1 = subjects.some(s => valid(s.iat1));
+  const hasIAT2 = subjects.some(s => valid(s.iat2));
+  const hasLab1 = subjects.some(s => valid(s.lab1));
+  const hasLab2 = subjects.some(s => valid(s.lab2));
+  const hasA1 = subjects.some(s => valid(s.assig1));
+  const hasA2 = subjects.some(s => valid(s.assig2));
+  const hasA3 = subjects.some(s => valid(s.assig3));
+  const hasA4 = subjects.some(s => valid(s.assig4));
+  const hasVTU = subjects.some(s => valid(s.vtu));
 
   const head = [[
     'Subject',
-    ...(hasIAT ? ['IAT'] : []),
-    ...(hasLab ? ['Lab'] : []),
-    ...(hasAssign ? ['Assignment'] : []),
+    ...(hasIAT1 ? ['IAT1'] : []),
+    ...(hasIAT2 ? ['IAT2'] : []),
+    ...(hasLab1 ? ['Lab1'] : []),
+    ...(hasLab2 ? ['Lab2'] : []),
+    ...(hasA1 ? ['Assign1'] : []),
+    ...(hasA2 ? ['Assign2'] : []),
+    ...(hasA3 ? ['Assign3'] : []),
+    ...(hasA4 ? ['Assign4'] : []),
+    ...(hasVTU ? ['VTU'] : []),
   ]];
 
   const body = subjects.map(s => [
     s.name,
-    ...(hasIAT ? [pretty(s.iat)] : []),
-    ...(hasLab ? [pretty(s.lab)] : []),
-    ...(hasAssign ? [pretty(s.assignment)] : []),
+    ...(hasIAT1 ? [pretty(s.iat1)] : []),
+    ...(hasIAT2 ? [pretty(s.iat2)] : []),
+    ...(hasLab1 ? [pretty(s.lab1)] : []),
+    ...(hasLab2 ? [pretty(s.lab2)] : []),
+    ...(hasA1 ? [pretty(s.assig1)] : []),
+    ...(hasA2 ? [pretty(s.assig2)] : []),
+    ...(hasA3 ? [pretty(s.assig3)] : []),
+    ...(hasA4 ? [pretty(s.assig4)] : []),
+    ...(hasVTU ? [pretty(s.vtu)] : []),
   ]);
 
   autoTable(doc, {

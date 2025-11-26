@@ -5,12 +5,13 @@ const User = require('../models/userModel');
 const marksController = {
   getMarks: async (req, res) => {
     try {
-      const { studentId, subject, category, teacherId } = req.query;
+      const { studentId, subject, category, subCategory, teacherId } = req.query;
 
       const query = {};
       if (studentId) query.studentId = studentId;
       if (subject) query.subject = subject;
       if (category) query.category = category;
+      if (subCategory) query.subCategory = subCategory;
       if (teacherId) query.teacherId = teacherId;
 
       const marks = await Marks.find(query)
@@ -25,7 +26,7 @@ const marksController = {
 
   addMarks: async (req, res) => {
     try {
-      const { studentId, subject, marks, teacherId, category, status } = req.body;
+      const { studentId, subject, marks, teacherId, category, subCategory, status } = req.body;
 
       const newMarks = new Marks({
         studentId,
@@ -33,6 +34,7 @@ const marksController = {
         marks,
         teacherId,
         category,
+        subCategory,
         status: status || 'completed',
       });
 
@@ -46,11 +48,11 @@ const marksController = {
   updateMarks: async (req, res) => {
     try {
       const { id } = req.params;
-      const { marks } = req.body;
+      const { marks, subCategory } = req.body;
 
       const updatedMarks = await Marks.findByIdAndUpdate(
         id,
-        { marks, updatedAt: Date.now() },
+        { marks, ...(subCategory ? { subCategory } : {}), updatedAt: Date.now() },
         { new: true }
       );
 

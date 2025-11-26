@@ -34,8 +34,6 @@ const TeacherDashboard = () => {
   });
   const [activity, setActivity] = useState([]); // {desc, who, date}
   const [searchUSN, setSearchUSN] = useState("");
-  const [searched, setSearched] = useState(null); // { student, marks }
-  const [searchError, setSearchError] = useState("");
 
   const [formData, setFormData] = useState({
     studentId: '',
@@ -47,6 +45,17 @@ const TeacherDashboard = () => {
 
   const [setup, setSetup] = useState({ year: '', department: '', subjects: [] });
   const [savingSetup, setSavingSetup] = useState(false);
+
+  const avatarKey = useMemo(() => (user?.id || user?._id) ? `avatar:${user.id || user._id}` : null, [user]);
+  const [avatar, setAvatar] = useState(null);
+  useEffect(() => {
+    if (avatarKey) {
+      const saved = localStorage.getItem(avatarKey);
+      setAvatar(saved || null);
+    } else {
+      setAvatar(null);
+    }
+  }, [avatarKey]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -235,14 +244,18 @@ const TeacherDashboard = () => {
                 placeholder="Search student by USN..."
                 value={searchUSN}
                 onChange={(e)=>setSearchUSN(e.target.value)}
-                onKeyDown={(e)=>{ if(e.key==='Enter'){ (async()=>{ try{ setSearchError(''); const res= await axiosInstance.get('/marks/by-usn',{ params:{ usn: searchUSN }}); setSearched(res.data); } catch(err){ setSearchError(err.response?.data?.message || 'Not found'); setSearched(null);} })(); } }}
+                onKeyDown={(e)=>{ if(e.key==='Enter'){ navigate(`/teacher/student-marks?usn=${encodeURIComponent(searchUSN.trim())}`); } }}
               />
             </div>
             <button className="icon-button" aria-label="Notifications">
               <i className="fa-regular fa-bell" />
             </button>
             <div className="header-profile-chip" onClick={()=>navigate('/teacher/profile')} title="View profile" style={{cursor:'pointer'}}>
-              <div className="chip-avatar">{(user?.name || 'EC')[0]}</div>
+              {avatar ? (
+                <img src={avatar} alt={user?.name || 'Teacher'} className="chip-avatar" style={{ objectFit:'cover' }} />
+              ) : (
+                <div className="chip-avatar">{(user?.name || 'EC')[0]}</div>
+              )}
               <div className="chip-info">
                 <span className="chip-name">{user?.name || 'Dr. Emily Carter'}</span>
                 <span className="chip-role">Teacher</span>
@@ -293,7 +306,7 @@ const TeacherDashboard = () => {
           </div>
         </section>
 
-        <section className="dashboard-bottom-row" style={{ gridTemplateColumns: searched?.student ? undefined : '1fr' }}>
+        <section className="dashboard-bottom-row" style={{ gridTemplateColumns: '1fr' }}>
           <div className="recent-activity-card" style={{ width: '100%' }}>
             <div className="recent-activity-header">
               <h2>Recent Activity</h2>
@@ -322,43 +335,7 @@ const TeacherDashboard = () => {
             </table>
           </div>
 
-          {searched?.student && (
-            <div className="profile-card" style={{ width: '100%', marginTop: 16 }}>
-              <div className="recent-activity-header">
-                <h2>Student Details</h2>
-                <span className="muted">USN: {searched.student.usn}</span>
-              </div>
-              <div className="profile-fields">
-                <div><strong>Name:</strong> {searched.student.name}</div>
-                <div><strong>Email:</strong> {searched.student.email || '-'}</div>
-                <div><strong>Class:</strong> {searched.student.class || '-'}</div>
-                <div><strong>Section:</strong> {searched.student.section || '-'}</div>
-              </div>
-              <div className="entermarks-table-block" style={{ marginTop: 12 }}>
-                <table className="entermarks-table">
-                  <thead>
-                    <tr>
-                      <th>Subject</th>
-                      <th>Category</th>
-                      <th>Marks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(searched.marks || []).map(m => (
-                      <tr key={m._id}>
-                        <td>{m.subject}</td>
-                        <td>{m.category}</td>
-                        <td>{m.marks}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-          {searchError && (
-            <div className="error-message" style={{ marginTop: 12 }}>{searchError}</div>
-          )}
+          {/* Detailed per-student marks view moved to /teacher/student-marks page */}
         </section>
       </main>
     </div>

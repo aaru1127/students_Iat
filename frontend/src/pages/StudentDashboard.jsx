@@ -7,7 +7,7 @@ import "../global.css";
 
 const StudentDashboard = () => {
   const { user, login } = useContext(AuthContext);
-  const [subjects, setSubjects] = useState([]); // [{name, iat, lab, assignments}]
+  const [subjects, setSubjects] = useState([]); // [{name, iat1, iat2, lab1, lab2, assig1, assig2, assig3, assig4, vtu}]
   const [loading, setLoading] = useState(false);
   const [errMarks, setErrMarks] = useState("");
   const needsProfile = useMemo(() => {
@@ -38,15 +38,34 @@ const StudentDashboard = () => {
       try {
         const res = await axiosInstance.get('/marks', { params: { studentId: user.id || user._id } });
         const list = Array.isArray(res.data) ? res.data : [];
-        // group by subject
+        // group by subject with detailed fields from subCategory
         const map = new Map();
         list.forEach(m => {
           const key = m.subject || 'Unknown';
-          if (!map.has(key)) map.set(key, { name: key, iat: '-', lab: '-', assignments: '-' });
+          if (!map.has(key)) {
+            map.set(key, {
+              name: key,
+              iat1: '-', iat2: '-',
+              lab1: '-', lab2: '-',
+              assig1: '-', assig2: '-', assig3: '-', assig4: '-',
+              vtu: '-',
+            });
+          }
           const rec = map.get(key);
-          if (m.category === 'IAT') rec.iat = m.marks;
-          if (m.category === 'Lab') rec.lab = m.marks;
-          if (m.category === 'Assignment') rec.assignments = m.marks;
+          if (m.category === 'VTU') {
+            rec.vtu = m.marks;
+          } else if (m.category === 'IAT') {
+            if (m.subCategory === 'IAT1') rec.iat1 = m.marks;
+            else if (m.subCategory === 'IAT2') rec.iat2 = m.marks;
+          } else if (m.category === 'Lab') {
+            if (m.subCategory === 'Lab1') rec.lab1 = m.marks;
+            else if (m.subCategory === 'Lab2') rec.lab2 = m.marks;
+          } else if (m.category === 'Assignment') {
+            if (m.subCategory === 'Assig1') rec.assig1 = m.marks;
+            else if (m.subCategory === 'Assig2') rec.assig2 = m.marks;
+            else if (m.subCategory === 'Assig3') rec.assig3 = m.marks;
+            else if (m.subCategory === 'Assig4') rec.assig4 = m.marks;
+          }
         });
         setSubjects(Array.from(map.values()));
       } catch (e) {

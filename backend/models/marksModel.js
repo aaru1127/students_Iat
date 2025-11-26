@@ -16,6 +16,10 @@ const marksSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  subCategory: {
+    type: String,
+    enum: ['IAT1', 'IAT2', 'Lab1', 'Lab2', 'Assig1', 'Assig2', 'Assig3', 'Assig4'],
+  },
   marks: {
     type: Number,
     required: true,
@@ -24,7 +28,7 @@ const marksSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['IAT', 'Lab', 'Assignment'],
+    enum: ['IAT', 'Lab', 'Assignment', 'VTU'],
     required: true
   },
   status: {

@@ -22,20 +22,23 @@ export default function SubjectMarks() {
 
   // Student mode state
   const isStudent = user?.role === 'student';
-  const [studentSubjects, setStudentSubjects] = useState([]); // [{name, iat, lab, assignment}]
+  const [studentSubjects, setStudentSubjects] = useState([]); // [{name, iat1, iat2, lab1, lab2, assig1-4, vtu}]
   const studentAverages = useMemo(() => {
     if (!studentSubjects || studentSubjects.length === 0) return { iat: 0, lab: 0, assignment: 0 };
     const vals = { iat: [], lab: [], assignment: [] };
     studentSubjects.forEach(s => {
-      if (s.iat !== '-' && s.iat !== '' && s.iat !== undefined) vals.iat.push(Number(s.iat));
-      if (s.lab !== '-' && s.lab !== '' && s.lab !== undefined) vals.lab.push(Number(s.lab));
-      if (s.assignment !== '-' && s.assignment !== '' && s.assignment !== undefined) vals.assignment.push(Number(s.assignment));
+      const iats = [s.iat1, s.iat2].filter(v => v !== '-' && v !== '' && v !== undefined);
+      const labs = [s.lab1, s.lab2].filter(v => v !== '-' && v !== '' && v !== undefined);
+      const assigns = [s.assig1, s.assig2, s.assig3, s.assig4].filter(v => v !== '-' && v !== '' && v !== undefined);
+      iats.forEach(v => vals.iat.push(Number(v)));
+      labs.forEach(v => vals.lab.push(Number(v)));
+      assigns.forEach(v => vals.assignment.push(Number(v)));
     });
     const avg = (arr) => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
     return { iat: avg(vals.iat), lab: avg(vals.lab), assignment: avg(vals.assignment) };
   }, [studentSubjects]);
 
-  const canLoad = department && year && section;
+  const canLoad = department && year && section && subject;
 
   // Student: load own marks and group by subject
   useEffect(() => {
@@ -50,11 +53,30 @@ export default function SubjectMarks() {
         const map = new Map();
         list.forEach(m => {
           const key = m.subject || 'Unknown';
-          if (!map.has(key)) map.set(key, { name: key, iat: '-', lab: '-', assignment: '-' });
+          if (!map.has(key)) {
+            map.set(key, {
+              name: key,
+              iat1: '-', iat2: '-',
+              lab1: '-', lab2: '-',
+              assig1: '-', assig2: '-', assig3: '-', assig4: '-',
+              vtu: '-',
+            });
+          }
           const rec = map.get(key);
-          if (m.category === 'IAT') rec.iat = m.marks;
-          if (m.category === 'Lab') rec.lab = m.marks;
-          if (m.category === 'Assignment') rec.assignment = m.marks;
+          if (m.category === 'VTU') {
+            rec.vtu = m.marks;
+          } else if (m.category === 'IAT') {
+            if (m.subCategory === 'IAT1') rec.iat1 = m.marks;
+            else if (m.subCategory === 'IAT2') rec.iat2 = m.marks;
+          } else if (m.category === 'Lab') {
+            if (m.subCategory === 'Lab1') rec.lab1 = m.marks;
+            else if (m.subCategory === 'Lab2') rec.lab2 = m.marks;
+          } else if (m.category === 'Assignment') {
+            if (m.subCategory === 'Assig1') rec.assig1 = m.marks;
+            else if (m.subCategory === 'Assig2') rec.assig2 = m.marks;
+            else if (m.subCategory === 'Assig3') rec.assig3 = m.marks;
+            else if (m.subCategory === 'Assig4') rec.assig4 = m.marks;
+          }
         });
         setStudentSubjects(Array.from(map.values()));
       } catch (e) {
@@ -84,27 +106,66 @@ export default function SubjectMarks() {
       const res = await axiosInstance.get('/marks/students', { params: { department, year, section } });
       const students = res.data.students || [];
 
-      // For each student, fetch their marks once and map categories
+      // For each student, fetch their marks for the chosen subject once and map categories
       const allMarks = await Promise.all(
-        students.map(s => axiosInstance.get('/marks', { params: { studentId: s._id, teacherId: (user?.id || user?._id) } })
+        students.map(s => axiosInstance.get('/marks', { params: { studentId: s._id, teacherId: (user?.id || user?._id), subject } })
           .then(r => r.data)
           .catch(() => []))
       );
 
       const merged = students.map((s, idx) => {
         const perStudent = allMarks[idx] || [];
-        const byCat = (cat) => perStudent.find(m => m.category === cat);
+        const byCat = (cat) => perStudent.filter(m => m.category === cat);
+        const byCatSub = (cat, subCat) => perStudent.find(m => m.category === cat && m.subCategory === subCat);
+
+        const iatMarks = byCat('IAT');
+        const labMarks = byCat('Lab');
+        const assignMarks = byCat('Assignment');
+        const vtuMarks = byCat('VTU');
+
+        const firstOrEmpty = (arr) => (arr && arr.length ? arr[0].marks : '');
+        const avgOrEmpty = (vals) => {
+          const nums = vals
+            .map(v => (v === '' || v === undefined || v === null ? null : Number(v)))
+            .filter(v => v !== null && !Number.isNaN(v));
+          if (!nums.length) return '';
+          return Math.round(nums.reduce((a,b)=>a+b,0) / nums.length);
+        };
+
+        const iat1Val = byCatSub('IAT','IAT1')?.marks ?? '';
+        const iat2Val = byCatSub('IAT','IAT2')?.marks ?? '';
+        const lab1Val = byCatSub('Lab','Lab1')?.marks ?? '';
+        const lab2Val = byCatSub('Lab','Lab2')?.marks ?? '';
+        const assig1Val = byCatSub('Assignment','Assig1')?.marks ?? '';
+        const assig2Val = byCatSub('Assignment','Assig2')?.marks ?? '';
+        const assig3Val = byCatSub('Assignment','Assig3')?.marks ?? '';
+        const assig4Val = byCatSub('Assignment','Assig4')?.marks ?? '';
+
         return {
           _id: s._id,
           usn: s.usn,
           name: s.name,
-          iat: byCat('IAT')?.marks ?? '',
-          lab: byCat('Lab')?.marks ?? '',
-          assignment: byCat('Assignment')?.marks ?? '',
+          // aggregate columns used in UI table (if any existing record without subCategory)
+          iat: firstOrEmpty(iatMarks),
+          lab: firstOrEmpty(labMarks),
+          assignment: firstOrEmpty(assignMarks),
+          vtu: firstOrEmpty(vtuMarks),
+          // per-assessment fields for CSV export and averages
+          iat1: iat1Val,
+          iat2: iat2Val,
+          lab1: lab1Val,
+          lab2: lab2Val,
+          assig1: assig1Val,
+          assig2: assig2Val,
+          assig3: assig3Val,
+          assig4: assig4Val,
+          iatAvg: avgOrEmpty([iat1Val, iat2Val]),
+          labAvg: avgOrEmpty([lab1Val, lab2Val]),
+          assigAvg: avgOrEmpty([assig1Val, assig2Val, assig3Val, assig4Val]),
           markIds: {
-            iat: byCat('IAT')?._id,
-            lab: byCat('Lab')?._id,
-            assignment: byCat('Assignment')?._id,
+            iat: iatMarks[0]?._id,
+            lab: labMarks[0]?._id,
+            assignment: assignMarks[0]?._id,
           }
         };
       });
@@ -117,47 +178,23 @@ export default function SubjectMarks() {
       setLoading(false);
     }
   };
-  const setCell = (idx, key, value) => {
-    const v = value === '' ? '' : Math.max(0, Math.min(100, Number(value)));
-    setRows(prev => prev.map((r,i)=> i===idx ? { ...r, [key]: v } : r));
-  };
-
-  const saveUpdates = async () => {
-    try {
-      const payloads = [];
-      const teacherId = user?.id || user?._id;
-      rows.forEach(r => {
-        // Save IAT, Lab and Assignment if provided
-        ["IAT","Lab","Assignment"].forEach(cat => {
-          const key = cat.toLowerCase();
-          const val = r[key];
-          if (val === '' || !subject) return; // require subject
-          const existingId = r.markIds[key];
-          if (existingId) {
-            payloads.push(axiosInstance.put(`/marks/${existingId}`, { marks: Number(val) }));
-          } else {
-            payloads.push(axiosInstance.post('/marks', {
-              studentId: r._id,
-              subject,
-              marks: Number(val),
-              teacherId,
-              category: cat,
-            }));
-          }
-        });
-      });
-      if (payloads.length === 0) return alert('No changes to save');
-      await Promise.all(payloads);
-      alert('Marks saved');
-      await loadStudents();
-    } catch (err) {
-      alert('Failed to save marks');
-    }
-  };
-
   const exportCsv = () => {
-    const header = ['USN','Name','IAT','Lab','Assignment'];
-    const lines = [header.join(',')].concat(rows.map(r => [r.usn, r.name, r.iat, r.lab, r.assignment].join(',')));
+    const header = ['USN','Name','IAT1','IAT2','Lab1','Lab2','Assignment1','Assignment2','Assignment3','Assignment4','VTU'];
+    const lines = [header.join(',')].concat(
+      rows.map(r => [
+        r.usn,
+        r.name,
+        r.iat1 ?? '',
+        r.iat2 ?? '',
+        r.lab1 ?? '',
+        r.lab2 ?? '',
+        r.assig1 ?? '',
+        r.assig2 ?? '',
+        r.assig3 ?? '',
+        r.assig4 ?? '',
+        r.vtu ?? '',
+      ].join(','))
+    );
     const blob = new Blob(["\uFEFF" + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -282,20 +319,14 @@ export default function SubjectMarks() {
               <option value="">Select Section</option>
               {sections.map(opt=> <option key={opt} value={opt}>{opt}</option>)}
             </select>
+            <select value={subject} onChange={e=>setSubject(e.target.value)}>
+              <option value="">Select Subject</option>
+              {["Data Structures","DBMS","OS","Networks","Mathematics"].map(opt=> <option key={opt} value={opt}>{opt}</option>)}
+            </select>
             <button className="entermarks-save-btn" onClick={loadStudents} disabled={!canLoad || loading}>
               {loading ? 'Loading...' : 'Apply Filters'}
             </button>
           </div>
-
-          {rows.length > 0 && (
-            <div className="entermarks-form-row" style={{ marginTop: 12 }}>
-              <select value={subject} onChange={e=>setSubject(e.target.value)}>
-                <option value="">Select Subject</option>
-                {["Data Structures","DBMS","OS","Networks","Mathematics"].map(opt=> <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-              <div className="muted">You can edit IAT, Lab and Assignment columns.</div>
-            </div>
-          )}
 
           {error && <div className="error-message" style={{ margin: '8px 0' }}>{error}</div>}
 
@@ -306,36 +337,41 @@ export default function SubjectMarks() {
                   <tr>
                     <th>USN</th>
                     <th>Name</th>
-                    <th>IAT</th>
-                    <th>Lab</th>
-                    <th>Assignment</th>
+                    <th>IAT 1</th>
+                    <th>IAT 2</th>
+                    <th>Lab 1</th>
+                    <th>Lab 2</th>
+                    <th>Assignment 1</th>
+                    <th>Assignment 2</th>
+                    <th>Assignment 3</th>
+                    <th>Assignment 4</th>
+                    <th>IAT Avg</th>
+                    <th>Lab Avg</th>
+                    <th>Assign Avg</th>
+                    <th>VTU</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r, idx) => (
+                  {rows.map((r) => (
                     <tr key={r._id}>
                       <td>{r.usn}</td>
                       <td>{r.name}</td>
-                      <td>
-                        <input type="number" min="0" max="100" className="marks-input" value={r.iat}
-                          onChange={e=>setCell(idx,'iat', e.target.value)} placeholder="0-100" />
-                      </td>
-                      <td>
-                        <input type="number" min="0" max="100" className="marks-input" value={r.lab}
-                          onChange={e=>setCell(idx,'lab', e.target.value)} placeholder="0-100" />
-                      </td>
-                      <td>
-                        <input type="number" min="0" max="100" className="marks-input" value={r.assignment}
-                          onChange={e=>setCell(idx,'assignment', e.target.value)} placeholder="0-100" />
-                      </td>
+                      <td>{r.iat1 ?? ''}</td>
+                      <td>{r.iat2 ?? ''}</td>
+                      <td>{r.lab1 ?? ''}</td>
+                      <td>{r.lab2 ?? ''}</td>
+                      <td>{r.assig1 ?? ''}</td>
+                      <td>{r.assig2 ?? ''}</td>
+                      <td>{r.assig3 ?? ''}</td>
+                      <td>{r.assig4 ?? ''}</td>
+                      <td>{r.iatAvg ?? ''}</td>
+                      <td>{r.labAvg ?? ''}</td>
+                      <td>{r.assigAvg ?? ''}</td>
+                      <td>{r.vtu ?? ''}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-
-              <div className="entermarks-save-btn-row">
-                <button className="entermarks-save-btn" onClick={saveUpdates} disabled={rows.length===0 || !subject}>Save Changes</button>
-              </div>
             </div>
           )}
         </section>

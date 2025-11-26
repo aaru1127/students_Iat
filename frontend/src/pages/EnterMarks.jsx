@@ -20,6 +20,7 @@ export default function EnterMarks() {
   const [section, setSection] = useState("");
   const [subject, setSubject] = useState("");
   const [category, setCategory] = useState("IAT");
+  const [subCategory, setSubCategory] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [usnQuery, setUsnQuery] = useState("");
@@ -35,6 +36,13 @@ export default function EnterMarks() {
   }, [location.pathname]);
 
   const canLoad = department && year && section;
+
+  const subCategoryOptions = () => {
+    if (category === 'IAT') return ['IAT1', 'IAT2'];
+    if (category === 'Lab') return ['Lab1', 'Lab2'];
+    if (category === 'Assignment') return ['Assig1', 'Assig2', 'Assig3', 'Assig4'];
+    return [];
+  };
 
   const loadStudents = async () => {
     if (!canLoad) return;
@@ -55,13 +63,19 @@ export default function EnterMarks() {
   };
 
   const handleMarkChange = (idx, value) => {
-    const v = value === '' ? '' : Math.max(0, Math.min(100, Number(value)));
+    if (value === '') {
+      setStudentList(prev => prev.map((s,i)=> i===idx ? { ...s, marks: '' } : s));
+      return;
+    }
+    const raw = Number(value);
+    const maxMarks = category === 'Assignment' ? 10 : 50; // IAT / Lab : 50, Assignment : 10
+    const v = Math.max(0, Math.min(maxMarks, isNaN(raw) ? 0 : raw));
     setStudentList(prev => prev.map((s,i)=> i===idx ? { ...s, marks: v } : s));
   };
 
   const handleSave = async () => {
     try {
-      const items = studentList.filter(s => s.marks !== '' && subject);
+      const items = studentList.filter(s => s.marks !== '' && subject && subCategory);
       if (items.length === 0) return alert('No marks to save');
 
       const teacherId = user?.id || user?._id;
@@ -70,7 +84,7 @@ export default function EnterMarks() {
       for (const s of items) {
         // find if a record already exists
         const existing = await axiosInstance.get('/marks', {
-          params: { studentId: s._id, subject, category, teacherId }
+          params: { studentId: s._id, subject, category, subCategory, teacherId }
         }).then(r => (Array.isArray(r.data) ? r.data[0] : null)).catch(() => null);
 
         if (existing && existing._id) {
@@ -82,6 +96,7 @@ export default function EnterMarks() {
             marks: Number(s.marks),
             teacherId,
             category,
+            subCategory,
           }));
         }
       }
@@ -141,6 +156,14 @@ export default function EnterMarks() {
               <select value={category} onChange={e=>setCategory(e.target.value)}>
                 {['IAT','Lab','Assignment'].map(opt=> <option key={opt} value={opt}>{opt}</option>)}
               </select>
+              {subCategoryOptions().length > 0 && (
+                <select value={subCategory} onChange={e=>setSubCategory(e.target.value)}>
+                  <option value="">Select Assessment</option>
+                  {subCategoryOptions().map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 
@@ -203,8 +226,8 @@ export default function EnterMarks() {
               className="marks-input"
               type="number"
               min="0"
-              max="100"
-              placeholder="Max: 100"
+              max={category === 'Assignment' ? 10 : 50}
+              placeholder={category === 'Assignment' ? 'Max: 10' : 'Max: 50'}
               value={s.marks}
               onChange={e => handleMarkChange(i, e.target.value)}
             />

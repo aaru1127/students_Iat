@@ -28,4 +28,7 @@ router.put('/profile', authController.updateProfile);
 // PUT /api/auth/subjects
 router.put('/subjects', authController.updateSubjects);
 
+// POST /api/auth/forgot-password
+router.post('/forgot-password', authController.forgotPassword);
+
 module.exports = router;

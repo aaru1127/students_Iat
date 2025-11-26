@@ -3,12 +3,15 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import './global.css';
 
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
 import Signup from './pages/Signup';
 import StudentDashboard from './pages/StudentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import EnterMarks from './pages/EnterMarks';
+import EnterVTUMarks from './pages/EnterVTUMarks';
 import SubjectMarks from './pages/SubjectMarks';
 import TeacherProfile from './pages/TeacherProfile';
+import StudentMarksByUSN from './pages/StudentMarksByUSN';
 import StudentProfile from './pages/StudentProfile';
 
 function App() {
@@ -16,6 +19,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/signup" element={<Signup />} />
 
       <Route path="/student-dashboard" element={<StudentDashboard />} />
@@ -25,8 +29,10 @@ function App() {
 
       {/* Teacher scoped routes */}
       <Route path="/teacher/enter-marks" element={<EnterMarks />} />
+      <Route path="/teacher/vtu-marks" element={<EnterVTUMarks />} />
       <Route path="/teacher/view-marks" element={<SubjectMarks />} />
       <Route path="/teacher/profile" element={<TeacherProfile />} />
+      <Route path="/teacher/student-marks" element={<StudentMarksByUSN />} />
 
       {/* Direct category routes reuse EnterMarks with path-based category */}
       <Route path="/teacher/marks/iat" element={<EnterMarks />} />

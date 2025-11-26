@@ -250,6 +250,32 @@ const authController = {
       return res.status(500).json({ message: 'Failed to update subjects', error: err.message });
     }
   },
+
+  // POST /api/auth/forgot-password
+  // Simple flow: teacher enters email + newPassword, we overwrite password.
+  // In production you would send a reset token instead.
+  forgotPassword: async (req, res) => {
+    try {
+      const { email, newPassword } = req.body;
+      if (!email || !newPassword) {
+        return res.status(400).json({ message: 'Email and new password are required' });
+      }
+
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found for this email' });
+      }
+
+      const hashed = await bcrypt.hash(newPassword, 10);
+      user.password = hashed;
+      await user.save();
+
+      return res.json({ message: 'Password updated successfully' });
+    } catch (err) {
+      console.error('Forgot password error:', err);
+      return res.status(500).json({ message: 'Failed to update password', error: err.message });
+    }
+  },
 };
 
 module.exports = authController;
